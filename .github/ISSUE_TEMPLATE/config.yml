@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: XMage gameplay help / questions
+    url: https://discord.gg/xmage
+    about: Questions about XMage itself (rules, decks, matchmaking) belong on the XMage Discord. Invoker only handles installation and launching.
+  - name: XMage client/server bugs
+    url: https://github.com/magefree/mage/issues
+    about: Bugs in the XMage game client belong upstream at magefree/mage. Invoker is just the launcher.

@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write   # required by softprops/action-gh-release
+
+# Stop two simultaneous tag pushes from racing — but don't cancel an in-flight release if a
+# second tag is pushed mid-build; queue the new one instead.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Package ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows-x86_64
+            format: msi
+          - os: ubuntu-latest
+            label: linux-amd64
+            format: deb
+          - os: macos-13
+            label: macos-x86_64
+            format: dmg
+          - os: macos-14
+            label: macos-arm64
+            format: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compute version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building Invoker $VERSION"
+
+      - name: Package
+        run: |
+          ./gradlew :shared:jvmTest :desktopApp:packageDistributionForCurrentOS \
+            -Pversion=${{ steps.version.outputs.version }}
+
+      - name: Locate and rename artifact
+        id: artifact
+        run: |
+          SOURCE=$(find desktopApp/build/compose/binaries/main/${{ matrix.format }} \
+                     -maxdepth 1 -type f -iname "*.${{ matrix.format }}" | head -n 1)
+          if [ -z "$SOURCE" ]; then
+            echo "::error::No .${{ matrix.format }} produced under desktopApp/build/compose/binaries/main/${{ matrix.format }}/"
+            ls -la desktopApp/build/compose/binaries/main/ || true
+            exit 1
+          fi
+          TARGET="Invoker-${{ steps.version.outputs.version }}-${{ matrix.label }}.${{ matrix.format }}"
+          cp "$SOURCE" "$TARGET"
+          echo "path=$TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.msi" -o -name "*.dmg" -o -name "*.deb" \) -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release/*
+          fail_on_unmatched_files: true
