@@ -117,7 +117,9 @@ Add it to `Strings.kt`, grouped by surface. If it has variable parts, use `%s` /
 
 ## Release process
 
-Tag-driven. Push a tag of the form `v1.x.y` to `main`; `.github/workflows/release.yml` builds the four installers (Windows MSI, Linux DEB, macOS Intel DMG, macOS Apple Silicon DMG) on platform-specific runners and uploads them to a GitHub Release auto-generated from the PR titles since the previous tag.
+Tag-driven. Push a tag of the form `v1.x.y` to `main`; `.github/workflows/release.yml` builds three installers (Windows MSI, Linux DEB, macOS Apple Silicon DMG) on platform-specific runners and uploads them to a GitHub Release auto-generated from the PR titles since the previous tag.
+
+The CI matrix used to include an Intel macOS build via the `macos-13` runner, but GitHub retired the free `macos-13` runner pool in 2025; the label is still accepted but jobs hang in the queue forever. Re-add `macos-13` (or pay for `macos-13-large`) to both workflows if Intel Mac demand justifies it.
 
 To verify locally before tagging:
 

@@ -31,9 +31,8 @@ jobs:
           - os: ubuntu-latest
             label: linux-amd64
             format: deb
-          - os: macos-13
-            label: macos-x86_64
-            format: dmg
+          # macOS arm64 only — see comment in build.yml. Re-add macos-13 (or a paid
+          # macos-13-large) here if Intel Mac demand materialises.
           - os: macos-14
             label: macos-arm64
             format: dmg

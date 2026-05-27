@@ -34,8 +34,10 @@ jobs:
             label: windows
           - os: ubuntu-latest
             label: linux
-          - os: macos-13
-            label: macos-x86_64
+          # macOS: arm64 only. GitHub retired the free macos-13 (Intel) runner pool in 2025;
+          # the label is still accepted but jobs sit in the queue forever. Intel Mac users
+          # have no Apple-provided arm64→x86_64 translation path, so they can't use this
+          # DMG natively — they'd need to build from source or run from a different machine.
           - os: macos-14
             label: macos-arm64
     runs-on: ${{ matrix.os }}

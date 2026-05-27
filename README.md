@@ -26,8 +26,9 @@ Grab the right installer for your platform from the [latest release](https://git
 |---|---|---|
 | **Windows** | `Invoker-*-windows-x86_64.msi` | Double-click to install. Windows SmartScreen will warn on first run — click **More info** → **Run anyway**. |
 | **macOS (Apple Silicon)** | `Invoker-*-macos-arm64.dmg` | Drag Invoker.app to Applications. First launch shows a Gatekeeper warning — **right-click → Open** instead of double-clicking, then click **Open** on the prompt. |
-| **macOS (Intel)** | `Invoker-*-macos-x86_64.dmg` | Same as Apple Silicon. |
 | **Linux** | `Invoker-*-linux-amd64.deb` | `sudo dpkg -i Invoker-*-linux-amd64.deb` then launch from your application menu. |
+
+> **No Intel macOS build.** Apple Silicon DMG only. If you're on an Intel Mac you'll need to build from source — see [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md).
 
 You do **not** need Java installed. The launcher ships with its own bundled runtime. XMage itself uses Java 8 — Invoker fetches that for you on first run.
 
