@@ -61,6 +61,7 @@ fun MainScreen(
                 Box(Modifier.fillMaxSize()) {
                     when (state.destination) {
                         Destination.Home -> HomePane(viewModel, state)
+                        Destination.Decks -> DecksPane(state, viewModel)
                         Destination.Settings -> SettingsPane(state, viewModel)
                         Destination.Community -> CommunityPane()
                         Destination.About -> AboutPane(state, viewModel)

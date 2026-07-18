@@ -11,6 +11,13 @@ class Paths(val installRoot: Path, private val platform: PlatformInfo) {
     val installedProperties: Path = installRoot.resolve("installed.properties")
     val logFile: Path = installRoot.resolve("xmage_launcher.log")
 
+    /**
+     * Where the XMage client reads card images from — `mage-client/plugins/images/`, relative to the
+     * client's working directory. Card images dropped here are picked up without a re-download and
+     * survive XMage updates (the extractor never wipes the client tree wholesale).
+     */
+    val cardImagesRoot: Path = xmageRoot.resolve("mage-client").resolve("plugins").resolve("images")
+
     fun javaHomeFor(version: String): Path {
         val cleanVersion = version.replace("[^A-Za-z0-9._-]".toRegex(), "_")
         val base = javaRoot.resolve("jre$cleanVersion")

@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ie.stu.invoker.AppEnvironment
 import ie.stu.invoker.config.RemoteConfig
+import ie.stu.invoker.decks.CardResult
+import ie.stu.invoker.decks.DeckImportResult
+import ie.stu.invoker.decks.DeckParsers
+import ie.stu.invoker.decks.ImageQuality
 import ie.stu.invoker.download.DownloadProgress
 import ie.stu.invoker.install.ArchiveExtractor
 import ie.stu.invoker.platform.DetectedJava
@@ -14,6 +18,7 @@ import ie.stu.invoker.settings.JavaSource
 import ie.stu.invoker.settings.UserSettings
 import ie.stu.invoker.update.UpdatePlan
 import ie.stu.invoker.update.UpdateService
+import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +39,22 @@ enum class InstallStatus {
     Loading,
 }
 
+/**
+ * Self-contained state for the Decks pane. Kept separate from the top-level download [progress] so
+ * a deck sync and an XMage install never clobber each other's progress.
+ */
+data class DeckSyncState(
+    val rawInput: String = "",
+    val running: Boolean = false,
+    val importing: Boolean = false,
+    val completed: Int = 0,
+    val total: Int = 0,
+    val results: List<CardResult> = emptyList(),
+    val ignoredLines: Int = 0,
+    val hint: String? = null,
+    val error: String? = null,
+)
+
 data class UiState(
     val settings: UserSettings = UserSettings(),
     val installed: InstalledVersions = InstalledVersions(),
@@ -49,6 +70,7 @@ data class UiState(
     val status: InstallStatus = InstallStatus.Loading,
     val detectedJavas: List<DetectedJava> = emptyList(),
     val javaDetectionRunning: Boolean = false,
+    val deckSync: DeckSyncState = DeckSyncState(),
 ) {
     val canLaunch: Boolean = installed.xmageVersion != null && when (settings.javaSource) {
         is JavaSource.Custom -> true
@@ -89,7 +111,7 @@ class MainViewModel(private val env: AppEnvironment) : ViewModel() {
             val remote = env.configService.fetch(_state.value.settings.xmageHomeUrl)
             // Only the bundled-JRE source benefits from auto-downloading Java; for custom paths
             // the user owns the runtime, so we skip Java update checks.
-            val skipJava = _state.value.settings.javaSource !is ie.stu.invoker.settings.JavaSource.Bundled
+            val skipJava = _state.value.settings.javaSource !is JavaSource.Bundled
             val plan = UpdateService.plan(remote, _state.value.installed, skipJava)
             _state.value = _state.value.copy(remote = remote, plan = plan, status = installStatusFor(plan))
             true
@@ -270,5 +292,122 @@ class MainViewModel(private val env: AppEnvironment) : ViewModel() {
         env.installedState.save(updated, _state.value.installed)
         _state.value = _state.value.copy(settings = updated)
         viewModelScope.launch { refresh() }
+    }
+
+    // ── Decks ────────────────────────────────────────────────────────────────
+
+    private fun updateDeckSync(transform: (DeckSyncState) -> DeckSyncState) {
+        _state.value = _state.value.copy(deckSync = transform(_state.value.deckSync))
+    }
+
+    fun onDeckInputChanged(text: String) {
+        updateDeckSync { it.copy(rawInput = text, hint = null, error = null) }
+    }
+
+    /** Persist the image-quality choice immediately. No config refresh — it's a local preference. */
+    fun setDeckImageQuality(quality: ImageQuality) {
+        val updated = _state.value.settings.copy(deckImageQuality = quality)
+        env.installedState.save(updated, _state.value.installed)
+        _state.value = _state.value.copy(settings = updated)
+    }
+
+    /** Read an XMage `.dck` (or any text deck) from disk into the paste field for review. */
+    fun loadDeckFile(path: Path) {
+        viewModelScope.launch {
+            val text = runCatching { withContext(Dispatchers.IO) { Files.readString(path) } }.getOrNull()
+            if (text != null) onDeckInputChanged(text)
+            else _messages.emit(String.format(Strings.SNACKBAR_DECK_IMPORT_ERROR, "couldn't read the file"))
+        }
+    }
+
+    fun importFromUrl(url: String) {
+        val ds = _state.value.deckSync
+        if (url.isBlank() || ds.importing || ds.running) return
+        viewModelScope.launch {
+            updateDeckSync { it.copy(importing = true, hint = null, error = null) }
+            when (val result = env.deckUrlImporter.fetch(url)) {
+                is DeckImportResult.Success -> updateDeckSync {
+                    it.copy(
+                        importing = false,
+                        rawInput = entriesToText(result.entries),
+                        hint = String.format(Strings.DECKS_IMPORTED, result.entries.size),
+                    )
+                }
+                is DeckImportResult.Unsupported -> updateDeckSync {
+                    it.copy(importing = false, hint = String.format(Strings.DECKS_HINT_UNSUPPORTED_URL, result.host))
+                }
+                is DeckImportResult.Failed -> {
+                    updateDeckSync { it.copy(importing = false, error = result.message) }
+                    _messages.emit(String.format(Strings.SNACKBAR_DECK_IMPORT_ERROR, result.message))
+                }
+            }
+        }
+    }
+
+    fun syncDeck() {
+        val ds = _state.value.deckSync
+        if (ds.running || ds.rawInput.isBlank()) return
+        val parsed = DeckParsers.parse(ds.rawInput)
+        if (parsed.entries.isEmpty()) {
+            updateDeckSync { it.copy(hint = Strings.DECKS_HINT_EMPTY) }
+            return
+        }
+        val quality = _state.value.settings.deckImageQuality
+        viewModelScope.launch {
+            updateDeckSync {
+                it.copy(
+                    running = true,
+                    completed = 0,
+                    total = parsed.entries.size,
+                    results = emptyList(),
+                    ignoredLines = parsed.ignoredLines.size,
+                    hint = null,
+                    error = null,
+                )
+            }
+            try {
+                env.cardImageSyncService.sync(parsed.entries, quality).collect { p ->
+                    updateDeckSync {
+                        it.copy(completed = p.completed, total = p.total, results = p.results, running = !p.done)
+                    }
+                }
+            } catch (e: Exception) {
+                val friendly = friendlyScryfallError(e)
+                updateDeckSync { it.copy(running = false, error = friendly) }
+                _messages.emit(String.format(Strings.SNACKBAR_DECK_SYNC_ERROR, friendly))
+            }
+        }
+    }
+
+    /**
+     * Turns a Scryfall failure into a user-facing message. Ktor's exception message for a non-2xx
+     * response embeds the raw JSON error body — we never want that on screen, so 429s and other HTTP
+     * errors are mapped to plain sentences.
+     */
+    private fun friendlyScryfallError(e: Throwable): String = when {
+        e is ResponseException && e.response.status.value == 429 -> Strings.DECKS_ERROR_RATE_LIMITED
+        e is ResponseException -> String.format(Strings.DECKS_ERROR_HTTP, e.response.status.value)
+        else -> Strings.DECKS_ERROR_GENERIC
+    }
+
+    /** Serialise imported entries back to a text deck the user can see and edit before syncing. */
+    private fun entriesToText(entries: List<ie.stu.invoker.decks.DeckEntry>): String {
+        fun line(e: ie.stu.invoker.decks.DeckEntry): String = buildString {
+            append(e.count).append(' ').append(e.name)
+            if (e.setCode != null) {
+                append(" (").append(e.setCode).append(')')
+                if (e.collectorNumber != null) append(' ').append(e.collectorNumber)
+            }
+        }
+        val main = entries.filter { !it.sideboard }
+        val sideboard = entries.filter { it.sideboard }
+        return buildString {
+            main.forEach { appendLine(line(it)) }
+            if (sideboard.isNotEmpty()) {
+                appendLine()
+                appendLine("Sideboard")
+                sideboard.forEach { appendLine(line(it)) }
+            }
+        }.trim()
     }
 }
