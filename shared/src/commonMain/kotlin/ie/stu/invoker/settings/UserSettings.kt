@@ -1,5 +1,7 @@
 package ie.stu.invoker.settings
 
+import ie.stu.invoker.decks.ImageQuality
+
 /**
  * Which Java runtime the launcher uses to spawn XMage. Note: this is **not** the launcher's
  * own runtime (that's bundled by jpackage at build time); this is the one passed to
@@ -24,6 +26,7 @@ data class UserSettings(
     val showClientConsole: Boolean = false,
     val showServerConsole: Boolean = false,
     val serverTestMode: Boolean = false,
+    val deckImageQuality: ImageQuality = ImageQuality.Large,
 ) {
     enum class Branch { Main, Custom }
 

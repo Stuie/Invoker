@@ -15,6 +15,7 @@ object Strings {
     // ── Frame & destinations (used by nav rail and pane headers) ────────────
     const val FRAME_TITLE = "Invoker — XMage Launcher"
     const val HOME = "Home"
+    const val DECKS = "Decks"
     const val SETTINGS = "Settings"
     const val COMMUNITY = "Community"
     const val ABOUT = "About"
@@ -72,6 +73,45 @@ object Strings {
 
     // Placeholder when a version is missing
     const val PLACEHOLDER_VERSION = "—"
+
+    // ── Decks pane ───────────────────────────────────────────────────────────
+    const val DECKS_SUBTITLE = "Fetch card images for a deck into XMage's cache."
+    const val DECKS_REQUIRES_XMAGE_TITLE = "Install XMage first"
+    const val DECKS_REQUIRES_XMAGE_BODY =
+        "Image fetching downloads card art into XMage's image cache and reads XMage's card database, so it needs XMage installed. Install it from Home, then come back."
+    const val DECKS_REQUIRES_XMAGE_ACTION = "Go to Home"
+    const val DECKS_INPUT_LABEL = "Deck list"
+    const val DECKS_INPUT_PLACEHOLDER =
+        "Paste a deck — XMage .dck, or a Moxfield / MTGA / Archidekt export.\nExample:\n4 Lightning Bolt (2X2) 117\n2 Counterspell"
+    const val DECKS_URL_PLACEHOLDER = "https://archidekt.com/decks/…"
+    const val DECKS_BTN_OPEN_DCK = "Open .dck…"
+    const val DECKS_BTN_IMPORT_URL = "Import URL"
+    const val DECKS_BTN_SYNC = "Sync images"
+    const val DECKS_BTN_SYNCING = "Syncing…"
+    const val DECKS_QUALITY_LABEL = "Image quality"
+    const val DECKS_QUALITY_SMALL = "Small"
+    const val DECKS_QUALITY_NORMAL = "Normal"
+    const val DECKS_QUALITY_LARGE = "Large"
+    const val DECKS_QUALITY_BEST = "Best"
+    const val DECKS_DIALOG_TITLE = "Choose an XMage .dck deck file"
+    const val DECKS_PROGRESS_LABEL = "Downloading images"
+    const val DECKS_PROGRESS_COUNT = "%d / %d"
+    const val DECKS_SYMBOL_MANA = "Mana symbols"
+    const val DECKS_SYMBOL_SET = "Set symbol · %s"
+    const val DECKS_STATUS_DOWNLOADED = "Downloaded"
+    const val DECKS_STATUS_SKIPPED = "Already present"
+    const val DECKS_STATUS_NOT_FOUND = "Not found"
+    const val DECKS_STATUS_FAILED = "Failed"
+    const val DECKS_SUMMARY = "%d downloaded · %d already present · %d not found"
+    const val DECKS_IGNORED_LINES = "%d line(s) couldn't be read and were skipped."
+    const val DECKS_HINT_UNSUPPORTED_URL =
+        "%s isn't supported for direct import. Use its Export button and paste the deck above."
+    const val DECKS_HINT_EMPTY = "Paste a deck or import a URL, then Sync images."
+    const val DECKS_IMPORTED = "Imported %d cards. Review, then Sync images."
+    const val DECKS_ERROR_RATE_LIMITED =
+        "Scryfall is rate-limiting requests (this can happen after loading several decks in quick succession). Wait about 30 seconds and try again."
+    const val DECKS_ERROR_HTTP = "Scryfall returned an error (HTTP %d). Try again in a moment."
+    const val DECKS_ERROR_GENERIC = "Couldn't reach Scryfall. Check your connection and try again."
 
     // ── About pane ───────────────────────────────────────────────────────────
     const val ABOUT_APP_NAME = "Invoker"
@@ -184,6 +224,8 @@ object Strings {
     const val SNACKBAR_SERVER_LAUNCH_FAILED = "Couldn't start the server. Press F3 for details."
     const val SNACKBAR_CLIENT_LAUNCH_FAILED = "Couldn't start the client. Press F3 for details."
     const val SNACKBAR_NO_JAVA = "No Java runtime available. Install XMage or set a custom Java path in Settings."
+    const val SNACKBAR_DECK_SYNC_ERROR = "Couldn't fetch deck images: %s"
+    const val SNACKBAR_DECK_IMPORT_ERROR = "Couldn't import deck: %s"
 
     // ── Debug overlay (F3) ───────────────────────────────────────────────────
     const val DEBUG_TITLE = "Debug"

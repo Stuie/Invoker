@@ -1,6 +1,10 @@
 package ie.stu.invoker
 
 import ie.stu.invoker.config.ConfigService
+import ie.stu.invoker.decks.CardImageSyncService
+import ie.stu.invoker.decks.DeckUrlImporter
+import ie.stu.invoker.decks.ScryfallService
+import ie.stu.invoker.decks.XMageCardDb
 import ie.stu.invoker.download.Downloader
 import ie.stu.invoker.install.InstalledState
 import ie.stu.invoker.install.Paths
@@ -20,6 +24,11 @@ class AppEnvironment(
     val downloader: Downloader = Downloader()
     val runner: XMageRunner = XMageRunner(paths)
     val javaDetector: JavaDetector = JavaDetector(platform)
+    val scryfallService: ScryfallService = ScryfallService()
+    val deckUrlImporter: DeckUrlImporter = DeckUrlImporter()
+    val xmageCardDb: XMageCardDb = XMageCardDb(paths)
+    val cardImageSyncService: CardImageSyncService =
+        CardImageSyncService(scryfallService, paths.cardImagesRoot, xmageCardDb)
 
     init {
         // Start persisting launcher diagnostics as early as possible so a failed launch leaves a

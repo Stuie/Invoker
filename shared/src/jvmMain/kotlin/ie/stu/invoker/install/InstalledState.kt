@@ -1,5 +1,6 @@
 package ie.stu.invoker.install
 
+import ie.stu.invoker.decks.ImageQuality
 import ie.stu.invoker.settings.InstalledVersions
 import ie.stu.invoker.settings.JavaSource
 import ie.stu.invoker.settings.UserSettings
@@ -22,6 +23,7 @@ private object Keys {
     const val SHOW_CLIENT_CONSOLE = "client.console.show"
     const val SHOW_SERVER_CONSOLE = "server.console.show"
     const val SERVER_TEST_MODE = "server.test.mode"
+    const val DECK_IMAGE_QUALITY = "deck.image.quality"
 }
 
 class InstalledState(private val file: Path) {
@@ -64,6 +66,7 @@ class InstalledState(private val file: Path) {
         props.setProperty(Keys.SHOW_CLIENT_CONSOLE, settings.showClientConsole.toString())
         props.setProperty(Keys.SHOW_SERVER_CONSOLE, settings.showServerConsole.toString())
         props.setProperty(Keys.SERVER_TEST_MODE, settings.serverTestMode.toString())
+        props.setProperty(Keys.DECK_IMAGE_QUALITY, settings.deckImageQuality.name)
         Files.createDirectories(file.parent)
         Files.newOutputStream(file).use { props.store(it, "Invoker settings") }
     }
@@ -84,6 +87,9 @@ class InstalledState(private val file: Path) {
             showClientConsole = props.getProperty(Keys.SHOW_CLIENT_CONSOLE)?.toBooleanStrictOrNull() ?: defaults.showClientConsole,
             showServerConsole = props.getProperty(Keys.SHOW_SERVER_CONSOLE)?.toBooleanStrictOrNull() ?: defaults.showServerConsole,
             serverTestMode = props.getProperty(Keys.SERVER_TEST_MODE)?.toBooleanStrictOrNull() ?: defaults.serverTestMode,
+            deckImageQuality = props.getProperty(Keys.DECK_IMAGE_QUALITY)?.let { name ->
+                runCatching { ImageQuality.valueOf(name) }.getOrNull()
+            } ?: defaults.deckImageQuality,
         )
     }
 
