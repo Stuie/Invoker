@@ -3,10 +3,8 @@ package ie.stu.invoker.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,18 +26,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ie.stu.invoker.ui.theme.Theme
 
+/**
+ * @param debugVisible whether the F3 debug overlay is shown. Hoisted to the caller so the F3/Esc
+ *   hotkeys can be handled at the [androidx.compose.ui.window.Window] level, which — unlike a
+ *   focus-based `onPreviewKeyEvent` — receives key events reliably regardless of which control is
+ *   focused (a plain focusable root silently stops getting events once a child grabs focus).
+ */
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    debugVisible: Boolean = false,
+    onCloseDebug: () -> Unit = {},
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -47,23 +52,29 @@ fun MainScreen(viewModel: MainViewModel) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
 
-    Row(Modifier.fillMaxSize().background(Theme.Ground1)) {
-        NavRail(state.destination, viewModel::navigateTo)
-        Box(Modifier.fillMaxSize().weight(1f)) {
-            AtmosphericBackground()
-            Scrim()
-            Box(Modifier.fillMaxSize()) {
-                when (state.destination) {
-                    Destination.Home -> HomePane(viewModel, state)
-                    Destination.Settings -> SettingsPane(state, viewModel)
-                    Destination.Community -> CommunityPane()
-                    Destination.About -> AboutPane(state, viewModel)
+    Box(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize().background(Theme.Ground1)) {
+            NavRail(state.destination, viewModel::navigateTo)
+            Box(Modifier.fillMaxSize().weight(1f)) {
+                AtmosphericBackground()
+                Scrim()
+                Box(Modifier.fillMaxSize()) {
+                    when (state.destination) {
+                        Destination.Home -> HomePane(viewModel, state)
+                        Destination.Settings -> SettingsPane(state, viewModel)
+                        Destination.Community -> CommunityPane()
+                        Destination.About -> AboutPane(state, viewModel)
+                    }
                 }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
+                )
             }
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp),
-            )
+        }
+
+        if (debugVisible) {
+            DebugOverlay(state = state, onClose = onCloseDebug)
         }
     }
 

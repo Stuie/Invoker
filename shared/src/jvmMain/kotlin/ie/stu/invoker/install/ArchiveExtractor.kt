@@ -1,17 +1,27 @@
 package ie.stu.invoker.install
 
+import ie.stu.invoker.process.AppLog
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.BufferedInputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
 import java.util.zip.ZipInputStream
 
 /** Preserved when re-extracting XMage so card images / logs / backgrounds survive an update. */
 private val xmagePreserveDirs = setOf("images", "gameLogs", "backgrounds")
+
+/**
+ * Kept (never deleted) when wiping an existing XMage install ahead of a fresh extract. Mirrors the
+ * Java launcher's `removeXMageFiles` filter: the big image/log/background caches plus user deck
+ * files. Everything else — crucially the version-stamped `mage-...-x.y.z.jar` files — is removed so
+ * old and new jars can't coexist on the wildcard `lib` classpath.
+ */
+private val xmagePreserveNames = setOf("images", "gameLogs", "backgrounds", "mageclient.log", "mageserver.log")
+
+private fun isXMagePreserved(name: String): Boolean = name in xmagePreserveNames || name.endsWith(".dck")
 
 object ArchiveExtractor {
 
@@ -39,8 +49,43 @@ object ArchiveExtractor {
         }
     }
 
-    fun extractXMageZip(archive: Path, destination: Path) =
+    /**
+     * Re-install XMage: wipe the previous install (except the preserved caches/decks), then extract
+     * fresh. The wipe is what prevents version-stamped jars from accumulating across updates — the
+     * bug that put 1.4.58/59/60 jars on the classpath at once and crashed the server with
+     * `NoSuchFieldError` while loading cards.
+     */
+    fun extractXMageZip(archive: Path, destination: Path) {
+        if (Files.isDirectory(destination)) {
+            AppLog.i("Cleaning previous XMage install at $destination (preserving images/logs/decks)")
+            val removed = cleanXMageFiles(destination)
+            AppLog.i("Removed $removed stale file(s) before extract")
+        }
         extractZip(archive, destination, xmagePreserveDirs)
+    }
+
+    /**
+     * Recursively delete files under [dir], skipping anything matched by [isXMagePreserved] (by name,
+     * at any depth — a preserved directory is left untouched entirely). Directories themselves are
+     * left in place; the extract repopulates them. Returns the number of files deleted.
+     */
+    private fun cleanXMageFiles(dir: Path): Int {
+        var count = 0
+        Files.newDirectoryStream(dir).use { stream ->
+            for (child in stream) {
+                val name = child.fileName.toString()
+                if (isXMagePreserved(name)) continue
+                count += if (Files.isDirectory(child)) {
+                    cleanXMageFiles(child)
+                } else {
+                    if (runCatching { Files.deleteIfExists(child) }.getOrElse {
+                            AppLog.w("Could not delete $child: ${it.message}"); false
+                        }) 1 else 0
+                }
+            }
+        }
+        return count
+    }
 
     fun extractTarGz(archive: Path, destination: Path) {
         Files.createDirectories(destination)

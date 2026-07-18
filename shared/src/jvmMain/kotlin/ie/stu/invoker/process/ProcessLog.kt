@@ -12,7 +12,17 @@ import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
 
-data class LogLine(val text: String, val timestampMs: Long = System.currentTimeMillis())
+enum class LogLevel { DEBUG, INFO, WARN, ERROR }
+
+/**
+ * One line of output. [level] is null for raw XMage process output (from [ProcessLog]) and
+ * non-null for launcher-level diagnostics (from [AppLog]); the debug overlay colours by it.
+ */
+data class LogLine(
+    val text: String,
+    val timestampMs: Long = System.currentTimeMillis(),
+    val level: LogLevel? = null,
+)
 
 class ProcessLog private constructor() {
 

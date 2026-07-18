@@ -8,9 +8,13 @@ import ie.stu.invoker.ui.MainScreen
 import ie.stu.invoker.ui.MainViewModel
 
 @Composable
-fun App(env: AppEnvironment = remember { AppEnvironment() }) {
+fun App(
+    env: AppEnvironment = remember { AppEnvironment() },
+    debugVisible: Boolean = false,
+    onCloseDebug: () -> Unit = {},
+) {
     val viewModel = remember(env) { MainViewModel(env) }
     MaterialTheme(colorScheme = darkColorScheme()) {
-        MainScreen(viewModel)
+        MainScreen(viewModel, debugVisible = debugVisible, onCloseDebug = onCloseDebug)
     }
 }

@@ -7,6 +7,7 @@ import ie.stu.invoker.config.RemoteConfig
 import ie.stu.invoker.download.DownloadProgress
 import ie.stu.invoker.install.ArchiveExtractor
 import ie.stu.invoker.platform.DetectedJava
+import ie.stu.invoker.process.AppLog
 import ie.stu.invoker.process.XMageProcess
 import ie.stu.invoker.settings.InstalledVersions
 import ie.stu.invoker.settings.JavaSource
@@ -204,12 +205,16 @@ class MainViewModel(private val env: AppEnvironment) : ViewModel() {
 
     fun launchClient() {
         val javaHome = resolveJavaHome() ?: return
-        env.runner.launchClient(_state.value.settings, javaHome)
+        if (env.runner.launchClient(_state.value.settings, javaHome) == null) {
+            failLaunch(Strings.SNACKBAR_CLIENT_LAUNCH_FAILED)
+        }
     }
 
     fun launchServer() {
         val javaHome = resolveJavaHome() ?: return
-        env.runner.launchServer(_state.value.settings, javaHome)
+        if (env.runner.launchServer(_state.value.settings, javaHome) == null) {
+            failLaunch(Strings.SNACKBAR_SERVER_LAUNCH_FAILED)
+        }
     }
 
     fun launchClientAndServer() {
@@ -219,11 +224,25 @@ class MainViewModel(private val env: AppEnvironment) : ViewModel() {
 
     fun stopServer() = env.runner.stopServer()
 
+    /** Log the failure context and nudge the user toward the F3 debug overlay for the details. */
+    private fun failLaunch(message: String) {
+        AppLog.w("Launch failed — see above for the reason (press F3 for the debug overlay)")
+        viewModelScope.launch { _messages.emit(message) }
+    }
+
     private fun resolveJavaHome(): Path? {
         return when (val src = _state.value.settings.javaSource) {
             is JavaSource.Custom -> Path.of(src.path)
             JavaSource.Bundled -> {
-                val version = _state.value.installed.javaVersion ?: return null
+                val version = _state.value.installed.javaVersion
+                if (version == null) {
+                    AppLog.e(
+                        "Cannot resolve Java home: source is Bundled but no Java version is installed. " +
+                            "Install XMage (which downloads the bundled JRE) or set a custom Java path in Settings.",
+                    )
+                    failLaunch(Strings.SNACKBAR_NO_JAVA)
+                    return null
+                }
                 env.paths.javaHomeFor(version)
             }
         }
