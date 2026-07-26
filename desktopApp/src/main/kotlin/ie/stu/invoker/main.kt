@@ -52,6 +52,10 @@ fun main() = application {
         LaunchedEffect(window) {
             window.minimumSize = Dimension(MIN_WIDTH, MIN_HEIGHT)
         }
-        App(debugVisible = debugVisible, onCloseDebug = { debugVisible = false })
+        App(
+            debugVisible = debugVisible,
+            onToggleDebug = { debugVisible = !debugVisible },
+            onCloseDebug = { debugVisible = false },
+        )
     }
 }
