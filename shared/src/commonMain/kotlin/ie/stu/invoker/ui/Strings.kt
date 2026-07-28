@@ -228,6 +228,7 @@ object Strings {
     const val SNACKBAR_DECK_IMPORT_ERROR = "Couldn't import deck: %s"
 
     // ── Debug overlay (F3) ───────────────────────────────────────────────────
+    const val NAV_LOGS = "Logs"
     const val DEBUG_TITLE = "Debug"
     const val DEBUG_HINT = "F3 to toggle · Esc to close"
     const val DEBUG_CLEAR = "Clear"

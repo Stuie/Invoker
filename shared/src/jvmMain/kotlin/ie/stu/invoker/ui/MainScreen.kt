@@ -27,10 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.outlined.Terminal
 import ie.stu.invoker.ui.theme.Theme
 
 /**
@@ -43,6 +46,7 @@ import ie.stu.invoker.ui.theme.Theme
 fun MainScreen(
     viewModel: MainViewModel,
     debugVisible: Boolean = false,
+    onToggleDebug: () -> Unit = {},
     onCloseDebug: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -54,7 +58,12 @@ fun MainScreen(
 
     Box(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().background(Theme.Ground1)) {
-            NavRail(state.destination, viewModel::navigateTo)
+            NavRail(
+                selected = state.destination,
+                onSelect = viewModel::navigateTo,
+                debugActive = debugVisible,
+                onOpenLogs = onToggleDebug,
+            )
             Box(Modifier.fillMaxSize().weight(1f)) {
                 AtmosphericBackground()
                 Scrim()
@@ -92,7 +101,12 @@ fun MainScreen(
 }
 
 @Composable
-private fun NavRail(selected: Destination, onSelect: (Destination) -> Unit) {
+private fun NavRail(
+    selected: Destination,
+    onSelect: (Destination) -> Unit,
+    debugActive: Boolean,
+    onOpenLogs: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -108,9 +122,18 @@ private fun NavRail(selected: Destination, onSelect: (Destination) -> Unit) {
         BrandGlyph()
         Spacer(Modifier.height(18.dp))
         Destination.entries.forEach { dest ->
-            RailItem(dest, dest == selected) { onSelect(dest) }
+            RailItem(dest.icon, dest.label, dest == selected, onClick = { onSelect(dest) })
             Spacer(Modifier.height(4.dp))
         }
+        // Pinned to the bottom: opens the debug/log overlay (the overlay itself documents the F3
+        // shortcut). Not a Destination — it's an overlay, so it toggles rather than navigating.
+        Spacer(Modifier.weight(1f))
+        RailItem(
+            icon = MaterialSymbols.Outlined.Terminal,
+            label = Strings.NAV_LOGS,
+            active = debugActive,
+            onClick = onOpenLogs,
+        )
     }
 }
 
@@ -130,7 +153,12 @@ private fun BrandGlyph(size: Int = 36) {
 }
 
 @Composable
-private fun RailItem(dest: Destination, active: Boolean, onClick: () -> Unit) {
+private fun RailItem(
+    icon: ImageVector,
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit,
+) {
     val itemBg = if (active) Color.White.copy(alpha = 0.06f) else Color.Transparent
     val iconBg = if (active) Theme.Surface3 else Color.Transparent
     val labelColor = if (active) Theme.Fg1 else Theme.Fg3
@@ -152,11 +180,11 @@ private fun RailItem(dest: Destination, active: Boolean, onClick: () -> Unit) {
                     .background(iconBg),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(dest.icon, contentDescription = dest.label, tint = labelColor, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = label, tint = labelColor, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.height(5.dp))
             Text(
-                dest.label,
+                label,
                 color = labelColor,
                 fontSize = 10.5.sp,
                 fontWeight = FontWeight.Medium,

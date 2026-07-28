@@ -49,12 +49,13 @@ import ie.stu.invoker.ui.theme.Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.FileDialog
 import java.awt.Frame
+import java.io.FilenameFilter
+import java.nio.file.Files
 import java.nio.file.Path
-import javax.swing.JFileChooser
+import java.util.prefs.Preferences
 import javax.swing.SwingUtilities
-import javax.swing.UIManager
-import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
 fun DecksPane(state: UiState, viewModel: MainViewModel) {
@@ -354,20 +355,43 @@ private fun SingleLineField(
     )
 }
 
-/** Native file picker filtered to `.dck`. Returns null if the user cancels. */
+/**
+ * Native OS file picker filtered to `.dck`. Returns null if the user cancels.
+ *
+ * Uses AWT's [FileDialog] rather than Swing's `JFileChooser` so the dialog is the platform's
+ * real one (Explorer on Windows, the Finder open sheet on macOS) instead of Swing's cross-platform
+ * approximation. The directory a deck was last picked from is remembered — across pickers and
+ * across launches — so loading several decks from the same folder doesn't mean re-navigating there
+ * each time.
+ */
 private suspend fun pickDckFile(): Path? = withContext(Dispatchers.IO) {
     var result: Path? = null
     SwingUtilities.invokeAndWait {
-        runCatching { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) }
-        val chooser = JFileChooser().apply {
-            fileSelectionMode = JFileChooser.FILES_ONLY
-            dialogTitle = Strings.DECKS_DIALOG_TITLE
-            fileFilter = FileNameExtensionFilter("XMage deck (*.dck)", "dck")
+        val dialog = FileDialog(null as Frame?, Strings.DECKS_DIALOG_TITLE, FileDialog.LOAD).apply {
+            lastDeckDir()?.let { directory = it }
+            // Windows honors a wildcard in `file` as an extension filter; macOS/Linux honor the
+            // FilenameFilter. Set both so the *.dck filter applies on every platform.
+            file = "*.dck"
+            filenameFilter = FilenameFilter { _, name -> name.endsWith(".dck", ignoreCase = true) }
         }
-        val rc = chooser.showOpenDialog(null as Frame?)
-        if (rc == JFileChooser.APPROVE_OPTION) {
-            result = chooser.selectedFile.toPath()
-        }
+        dialog.isVisible = true
+        val name = dialog.file ?: return@invokeAndWait   // null -> user cancelled
+        val dir = dialog.directory
+        if (dir != null) rememberDeckDir(dir)
+        result = if (dir != null) Path.of(dir, name) else Path.of(name)
     }
     result
+}
+
+private const val LAST_DECK_DIR_KEY = "lastDeckDir"
+
+private val deckPickerPrefs: Preferences
+    get() = Preferences.userRoot().node("ie/stu/invoker/decks")
+
+/** The directory a deck was last picked from, or null if none is stored or it no longer exists. */
+private fun lastDeckDir(): String? =
+    deckPickerPrefs.get(LAST_DECK_DIR_KEY, null)?.takeIf { Files.isDirectory(Path.of(it)) }
+
+private fun rememberDeckDir(dir: String) {
+    runCatching { deckPickerPrefs.put(LAST_DECK_DIR_KEY, dir) }
 }

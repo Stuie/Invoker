@@ -11,10 +11,16 @@ import ie.stu.invoker.ui.MainViewModel
 fun App(
     env: AppEnvironment = remember { AppEnvironment() },
     debugVisible: Boolean = false,
+    onToggleDebug: () -> Unit = {},
     onCloseDebug: () -> Unit = {},
 ) {
     val viewModel = remember(env) { MainViewModel(env) }
     MaterialTheme(colorScheme = darkColorScheme()) {
-        MainScreen(viewModel, debugVisible = debugVisible, onCloseDebug = onCloseDebug)
+        MainScreen(
+            viewModel,
+            debugVisible = debugVisible,
+            onToggleDebug = onToggleDebug,
+            onCloseDebug = onCloseDebug,
+        )
     }
 }
