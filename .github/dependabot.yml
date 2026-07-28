@@ -1,0 +1,13 @@
+version: 2
+
+updates:
+  # Actions are pinned to commit SHAs (see .github/workflows/*.yml). Dependabot understands
+  # that convention: it bumps the SHA and rewrites the trailing `# vX.Y.Z` comment to match.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One PR per week for the whole set rather than one per action.
+    groups:
+      actions:
+        patterns: ['*']
